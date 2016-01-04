@@ -15,12 +15,14 @@ ThreadedDisplay::ThreadedDisplay() {
 }
 
 ThreadedDisplay::~ThreadedDisplay() {
+	delete renderThread;
 }
 
 void ThreadedDisplay::use(const MinVR::VRDisplayAction& action) {
 }
 
 void ThreadedDisplay::initialize() {
+	renderThread = new RenderThread(this);
 	VRDisplayDevice::initialize();
 }
 

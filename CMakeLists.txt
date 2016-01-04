@@ -8,11 +8,14 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 set (SOURCEFILES 
+  src/RenderThread.cpp
   src/ThreadedDisplay.cpp
   src/ThreadingPlugin.cpp
 )
 
 set (HEADERFILES
+  src/RenderThread.h
+  src/Thread.h
   src/ThreadedDisplay.h
 )
 

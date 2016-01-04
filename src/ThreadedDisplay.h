@@ -10,6 +10,7 @@
 #define THREADEDDISPLAY_H_
 
 #include "display/VRDisplayDevice.h"
+#include "RenderThread.h"
 
 namespace MinVR {
 
@@ -24,6 +25,9 @@ public:
 
 protected:
 	void startRendering(const MinVR::VRRenderer& renderer, int x);
+
+private:
+	RenderThread* renderThread;
 };
 
 class ThreadedDisplayFactory : public SimpleVRDisplayFactory {
