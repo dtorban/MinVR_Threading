@@ -8,10 +8,12 @@ if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 
 set (SOURCEFILES 
+  src/ThreadedDisplay.cpp
   src/ThreadingPlugin.cpp
 )
 
 set (HEADERFILES
+  src/ThreadedDisplay.h
 )
 
 source_group("Header Files" FILES ${HEADERFILES})
@@ -58,6 +60,7 @@ if (MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     # Tell MSVC to use main instead of WinMain for Windows subsystem executables
     set_target_properties(${WINDOWS_BINARIES} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -72,6 +75,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 	find_package(Threads)
 	find_package(X11)
 	set(LIBS_ALL ${LIBS_ALL} ${CMAKE_THREAD_LIBS_INIT} rt Xrandr Xxf86vm Xi m dl ${X11_LIBRARIES})

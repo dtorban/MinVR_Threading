@@ -9,7 +9,7 @@
 #include "plugin/Plugin.h"
 #include <iostream>
 #include "main/VRPluginInterface.h"
-//#include "DisplayFactoryOgl.h"
+#include "ThreadedDisplay.h"
 
 namespace MinVR {
 
@@ -28,8 +28,8 @@ public:
 		VRPluginInterface* vrInterface = iface->getInterface<VRPluginInterface>();
 		if (vrInterface != NULL)
 		{
-			//displayFactory = new DisplayFactoryOgl();
-			//vrInterface->addVRDisplayDeviceFactory(displayFactory);
+			displayFactory = new ThreadedDisplayFactory();
+			vrInterface->addVRDisplayDeviceFactory(displayFactory);
 			return true;
 		}
 
@@ -43,7 +43,7 @@ public:
 	}
 
 private:
-	//DisplayFactoryOgl* displayFactory;
+	ThreadedDisplayFactory* displayFactory;
 };
 
 }
