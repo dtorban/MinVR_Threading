@@ -34,6 +34,15 @@ void ThreadedDisplay::useDisplay(const MinVR::VRDisplayAction& action) {
 	threadInfo.startActionCond.notify_all();
 	threadInfo.startActionMutex.unlock();
 
+	std::vector<VRDisplayDevice*> subDisplays = getSubDisplays();
+	for (int f = 0; f < subDisplays.size(); f++)
+	{
+		if (!subDisplays[f]->allowThreading())
+		{
+			subDisplays[f]->use(action);
+		}
+	}
+
 	// Wait for threads to finish rendering
 	UniqueMutexLock endActionLock(threadInfo.endActionMutex);
 	while (threadInfo.numThreadsCompleted < threadInfo.numThreads) {
@@ -43,15 +52,24 @@ void ThreadedDisplay::useDisplay(const MinVR::VRDisplayAction& action) {
 }
 
 void ThreadedDisplay::initialize() {
+	std::vector<VRDisplayDevice*> threadedDisplays;
+	for (int f = 0; f < getSubDisplays().size(); f++)
+	{
+		if (getSubDisplays()[f]->allowThreading())
+		{
+			threadedDisplays.push_back(getSubDisplays()[f]);
+		}
+	}
+
 	threadInfo.threadAction = THREADACTION_NONE;
-	threadInfo.numThreads = getSubDisplays().size();
+	threadInfo.numThreads = threadedDisplays.size();
 	threadInfo.numThreadsStarted = 0;
 	threadInfo.numThreadsCompleted = 0;
 	threadInfo.barrier = new Barrier(threadInfo.numThreads);
 
-	for (int f = 0; f < threadInfo.numThreads; f++)
+	for (int f = 0; f < threadedDisplays.size(); f++)
 	{
-		renderThreads.push_back(new RenderThread(getSubDisplays()[f], &threadInfo));
+		renderThreads.push_back(new RenderThread(threadedDisplays[f], &threadInfo));
 	}
 
 	VRDisplayDevice::initialize();
@@ -60,6 +78,7 @@ void ThreadedDisplay::initialize() {
 void ThreadedDisplay::finishRendering() {
 	//finishRenderingAllDisplays();
 
+
 	// Wait for threads to finish rendering
 	UniqueMutexLock endActionLock(threadInfo.endActionMutex);
 	while (threadInfo.numThreadsCompleted < threadInfo.numThreads) {
@@ -67,6 +86,15 @@ void ThreadedDisplay::finishRendering() {
 	}
 
 	endActionLock.unlock();
+
+	std::vector<VRDisplayDevice*> subDisplays = getSubDisplays();
+	for (int f = 0; f < subDisplays.size(); f++)
+	{
+		if (!subDisplays[f]->allowThreading())
+		{
+			subDisplays[f]->finishRendering();
+		}
+	}
 }
 
 void ThreadedDisplay::startRendering(const MinVR::VRRenderer& renderer, int x) {
@@ -83,6 +111,14 @@ void ThreadedDisplay::startRendering(const MinVR::VRRenderer& renderer, int x) {
 	threadInfo.startActionMutex.unlock();
 
 	//std::cout << "start rendering threaded " << frame << std::endl << std::flush;
+	std::vector<VRDisplayDevice*> subDisplays = getSubDisplays();
+	for (int f = 0; f < subDisplays.size(); f++)
+	{
+		if (!subDisplays[f]->allowThreading())
+		{
+			VRDisplayDevice::startRendering(subDisplays[f], renderer, x);
+		}
+	}
 	//startRenderingAllDisplays(renderer, x);
 
 	UniqueMutexLock startedActionLock(threadInfo.startedActionMutex);
