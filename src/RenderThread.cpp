@@ -27,6 +27,7 @@ RenderThread::~RenderThread() {
 }
 
 void RenderThread::render() {
+	threadInfo->barrier->wait();
 
 	while (true)
 	{
@@ -43,8 +44,6 @@ void RenderThread::render() {
 			return;
 		}
 
-		startActionLock.unlock();
-
 		if (threadInfo->threadAction == THREADACTION_NONE)
 		{
 			std::cout << "NONE" << std::endl << std::flush;
@@ -60,10 +59,15 @@ void RenderThread::render() {
 
 		threadInfo->startedActionMutex.lock();
 		threadInfo->numThreadsStarted++;
+		if (threadInfo->numThreadsStarted >= threadInfo->numThreads)
+		{
+			threadInfo->threadAction = THREADACTION_NONE;
+		}
+		startActionLock.unlock();
+
 		threadInfo->startedActionCond.notify_all();
 		threadInfo->startedActionMutex.unlock();
 
-		threadInfo->threadAction = THREADACTION_NONE;
 		threadInfo->barrier->wait();
 
 		threadInfo->endActionMutex.lock();

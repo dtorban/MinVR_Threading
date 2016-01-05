@@ -28,7 +28,7 @@ protected:
 	void startRendering(const MinVR::VRRenderer& renderer, int x);
 
 private:
-	RenderThread* renderThread;
+	std::vector<RenderThread*> renderThreads;
 	RenderThreadInfo threadInfo;
 	int frame;
 };

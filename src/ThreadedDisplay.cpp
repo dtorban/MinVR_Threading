@@ -14,15 +14,13 @@ namespace MinVR {
 int frame = 0;
 
 ThreadedDisplay::ThreadedDisplay() : frame(0) {
-	threadInfo.threadAction == THREADACTION_NONE;
-	threadInfo.numThreads = 1;
-	threadInfo.numThreadsStarted = 0;
-	threadInfo.numThreadsCompleted = 0;
-	threadInfo.barrier = new Barrier(threadInfo.numThreads);
 }
 
 ThreadedDisplay::~ThreadedDisplay() {
-	delete renderThread;
+	for (int f = 0; f < renderThreads.size(); f++)
+	{
+		delete renderThreads[f];
+	}
 	delete threadInfo.barrier;
 }
 
@@ -30,7 +28,17 @@ void ThreadedDisplay::use(const MinVR::VRDisplayAction& action) {
 }
 
 void ThreadedDisplay::initialize() {
-	renderThread = new RenderThread(this, &threadInfo);
+	threadInfo.threadAction = THREADACTION_NONE;
+	threadInfo.numThreads = 10;
+	threadInfo.numThreadsStarted = 0;
+	threadInfo.numThreadsCompleted = 0;
+	threadInfo.barrier = new Barrier(threadInfo.numThreads);
+
+	for (int f = 0; f < threadInfo.numThreads; f++)
+	{
+		renderThreads.push_back(new RenderThread(this, &threadInfo));
+	}
+
 	VRDisplayDevice::initialize();
 }
 
@@ -62,6 +70,7 @@ void ThreadedDisplay::startRendering(const MinVR::VRRenderer& renderer, int x) {
 
 	UniqueMutexLock startedActionLock(threadInfo.startedActionMutex);
 	while (threadInfo.numThreadsStarted < threadInfo.numThreads) {
+		std::cout << "blah - " << threadInfo.numThreadsStarted << std::endl;
 		threadInfo.startedActionCond.wait(startedActionLock);
 	}
 	startedActionLock.unlock();
