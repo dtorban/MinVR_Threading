@@ -21,7 +21,7 @@ public:
 	virtual ~ThreadedDisplay();
 
 	void initialize();
-	void use(const MinVR::VRDisplayAction& action);
+	void useDisplay(const MinVR::VRDisplayAction& action);
 	void finishRendering();
 
 protected:

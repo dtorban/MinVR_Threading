@@ -12,7 +12,7 @@
 namespace MinVR {
 
 RenderThread::RenderThread(VRDisplayDevice* display, RenderThreadInfo* threadInfo)
-	: threadInfo(threadInfo), frame(0) {
+	: display(display), threadInfo(threadInfo), frame(0) {
 	// TODO Auto-generated constructor stub
 	_thread = new Thread(&RenderThread::render, this);
 }
@@ -31,30 +31,34 @@ void RenderThread::render() {
 
 	while (true)
 	{
-		frame++;
+
+		RenderThreadAction action = THREADACTION_NONE;
 
 		// Wait for the main thread to signal that it's ok to start rendering
 		UniqueMutexLock startActionLock(threadInfo->startActionMutex);
 		while (threadInfo->threadAction == THREADACTION_NONE) {
 			threadInfo->startActionCond.wait(startActionLock);
 		}
-		if (threadAction == THREADACTION_TERMINATE) {
-			// RENDERING_TERMINATE is a special flag used to quit the application and cleanup all the threads nicely
+		if (threadInfo->threadAction == THREADACTION_TERMINATE) {
+			// THREADACTION_TERMINATE is a special flag used to quit the application and cleanup all the threads nicely
 			startActionLock.unlock();
 			return;
 		}
 
-		if (threadInfo->threadAction == THREADACTION_NONE)
+		action = threadInfo->threadAction;
+
+		startActionLock.unlock();
+
+		if (action == THREADACTION_RENDER)
 		{
-			std::cout << "NONE" << std::endl << std::flush;
+			frame++;
+			//std::cout << "RENDER " << frame << std::endl << std::flush;
+			VRDisplayDevice::startRendering(display, *(threadInfo->renderer), threadInfo->x);
 		}
-		else if (threadInfo->threadAction == THREADACTION_RENDER)
+		else if (action == THREADACTION_ACTION)
 		{
-			std::cout << "RENDER " << frame << std::endl << std::flush;
-		}
-		else if (threadInfo->threadAction == THREADACTION_ACTION)
-		{
-			std::cout << "ACTION" << std::endl << std::flush;
+			//std::cout << "ACTION " << frame << std::endl << std::flush;
+			threadInfo->action->exec();
 		}
 
 		threadInfo->startedActionMutex.lock();
@@ -63,17 +67,22 @@ void RenderThread::render() {
 		{
 			threadInfo->threadAction = THREADACTION_NONE;
 		}
-		startActionLock.unlock();
-
 		threadInfo->startedActionCond.notify_all();
 		threadInfo->startedActionMutex.unlock();
 
 		threadInfo->barrier->wait();
 
+		if (action == THREADACTION_RENDER)
+		{
+			display->finishRendering();
+		}
+
 		threadInfo->endActionMutex.lock();
 		threadInfo->numThreadsCompleted++;
 		threadInfo->endActionCond.notify_all();
 		threadInfo->endActionMutex.unlock();
+
+		threadInfo->barrier->wait();
 	}
 }
 

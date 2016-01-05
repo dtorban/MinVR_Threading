@@ -29,6 +29,10 @@ struct RenderThreadInfo
 	int numThreadsStarted;
 	int numThreadsCompleted;
 	int numThreads;
+
+	const VRDisplayAction* action;
+	const VRRenderer* renderer;
+	int x;
 };
 
 class RenderThread {
@@ -39,19 +43,8 @@ public:
 
 	void render();
 
-	void setAction(const VRDisplayAction* action) {
-		this->action = action;
-	}
-
-	void setRenderer(const VRRenderer* renderer) {
-		this->renderer = renderer;
-	}
-
 private:
 	VRDisplayDevice* display;
-	const VRDisplayAction* action;
-	const VRRenderer* renderer;
-	RenderThreadAction threadAction;
 	Thread* _thread;
 
 	RenderThreadInfo* threadInfo;

@@ -24,26 +24,41 @@ ThreadedDisplay::~ThreadedDisplay() {
 	delete threadInfo.barrier;
 }
 
-void ThreadedDisplay::use(const MinVR::VRDisplayAction& action) {
+void ThreadedDisplay::useDisplay(const MinVR::VRDisplayAction& action) {
+	threadInfo.numThreadsStarted = 0;
+	threadInfo.numThreadsCompleted = 0;
+
+	threadInfo.startActionMutex.lock();
+	threadInfo.action = &action;
+	threadInfo.threadAction = THREADACTION_ACTION;
+	threadInfo.startActionCond.notify_all();
+	threadInfo.startActionMutex.unlock();
+
+	// Wait for threads to finish rendering
+	UniqueMutexLock endActionLock(threadInfo.endActionMutex);
+	while (threadInfo.numThreadsCompleted < threadInfo.numThreads) {
+		threadInfo.endActionCond.wait(endActionLock);
+	}
+	endActionLock.unlock();
 }
 
 void ThreadedDisplay::initialize() {
 	threadInfo.threadAction = THREADACTION_NONE;
-	threadInfo.numThreads = 10;
+	threadInfo.numThreads = getSubDisplays().size();
 	threadInfo.numThreadsStarted = 0;
 	threadInfo.numThreadsCompleted = 0;
 	threadInfo.barrier = new Barrier(threadInfo.numThreads);
 
 	for (int f = 0; f < threadInfo.numThreads; f++)
 	{
-		renderThreads.push_back(new RenderThread(this, &threadInfo));
+		renderThreads.push_back(new RenderThread(getSubDisplays()[f], &threadInfo));
 	}
 
 	VRDisplayDevice::initialize();
 }
 
 void ThreadedDisplay::finishRendering() {
-	finishRenderingAllDisplays();
+	//finishRenderingAllDisplays();
 
 	// Wait for threads to finish rendering
 	UniqueMutexLock endActionLock(threadInfo.endActionMutex);
@@ -61,16 +76,17 @@ void ThreadedDisplay::startRendering(const MinVR::VRRenderer& renderer, int x) {
 	threadInfo.numThreadsCompleted = 0;
 
 	threadInfo.startActionMutex.lock();
+	threadInfo.renderer = &renderer;
+	threadInfo.x = x;
 	threadInfo.threadAction = THREADACTION_RENDER;
 	threadInfo.startActionCond.notify_all();
 	threadInfo.startActionMutex.unlock();
 
-	std::cout << "start rendering threaded " << frame << std::endl << std::flush;
-	startRenderingAllDisplays(renderer, x);
+	//std::cout << "start rendering threaded " << frame << std::endl << std::flush;
+	//startRenderingAllDisplays(renderer, x);
 
 	UniqueMutexLock startedActionLock(threadInfo.startedActionMutex);
 	while (threadInfo.numThreadsStarted < threadInfo.numThreads) {
-		std::cout << "blah - " << threadInfo.numThreadsStarted << std::endl;
 		threadInfo.startedActionCond.wait(startedActionLock);
 	}
 	startedActionLock.unlock();
