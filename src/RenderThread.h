@@ -14,11 +14,27 @@
 
 namespace MinVR {
 
+enum RenderThreadAction { THREADACTION_NONE, THREADACTION_ACTION, THREADACTION_RENDER, THREADACTION_TERMINATE };
+
+struct RenderThreadInfo
+{
+	Mutex startActionMutex;
+	ConditionVariable startActionCond;
+	Mutex startedActionMutex;
+	ConditionVariable startedActionCond;
+	Mutex endActionMutex;
+	ConditionVariable endActionCond;
+	Barrier* barrier;
+	RenderThreadAction threadAction;
+	int numThreadsStarted;
+	int numThreadsCompleted;
+	int numThreads;
+};
+
 class RenderThread {
 public:
-	enum RenderThreadAction { NONE, ACTION, RENDER, EXIT };
 
-	RenderThread(VRDisplayDevice* display);
+	RenderThread(VRDisplayDevice* display, RenderThreadInfo* threadInfo);
 	virtual ~RenderThread();
 
 	void render();
@@ -31,16 +47,16 @@ public:
 		this->renderer = renderer;
 	}
 
-	void setThreadAction(RenderThreadAction threadAction) {
-		this->threadAction = threadAction;
-	}
-
 private:
 	VRDisplayDevice* display;
 	const VRDisplayAction* action;
 	const VRRenderer* renderer;
 	RenderThreadAction threadAction;
 	Thread* _thread;
+
+	RenderThreadInfo* threadInfo;
+
+	int frame;
 };
 
 } /* namespace MinVR */

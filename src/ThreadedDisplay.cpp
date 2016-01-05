@@ -11,28 +11,60 @@
 
 namespace MinVR {
 
-ThreadedDisplay::ThreadedDisplay() {
+int frame = 0;
+
+ThreadedDisplay::ThreadedDisplay() : frame(0) {
+	threadInfo.threadAction == THREADACTION_NONE;
+	threadInfo.numThreads = 1;
+	threadInfo.numThreadsStarted = 0;
+	threadInfo.numThreadsCompleted = 0;
+	threadInfo.barrier = new Barrier(threadInfo.numThreads);
 }
 
 ThreadedDisplay::~ThreadedDisplay() {
 	delete renderThread;
+	delete threadInfo.barrier;
 }
 
 void ThreadedDisplay::use(const MinVR::VRDisplayAction& action) {
 }
 
 void ThreadedDisplay::initialize() {
-	renderThread = new RenderThread(this);
+	renderThread = new RenderThread(this, &threadInfo);
 	VRDisplayDevice::initialize();
 }
 
 void ThreadedDisplay::finishRendering() {
 	finishRenderingAllDisplays();
+
+	// Wait for threads to finish rendering
+	UniqueMutexLock endActionLock(threadInfo.endActionMutex);
+	while (threadInfo.numThreadsCompleted < threadInfo.numThreads) {
+		threadInfo.endActionCond.wait(endActionLock);
+	}
+
+	endActionLock.unlock();
 }
 
 void ThreadedDisplay::startRendering(const MinVR::VRRenderer& renderer, int x) {
-	std::cout << "start rendering threaded" << std::endl;
+	frame++;
+
+	threadInfo.numThreadsStarted = 0;
+	threadInfo.numThreadsCompleted = 0;
+
+	threadInfo.startActionMutex.lock();
+	threadInfo.threadAction = THREADACTION_RENDER;
+	threadInfo.startActionCond.notify_all();
+	threadInfo.startActionMutex.unlock();
+
+	std::cout << "start rendering threaded " << frame << std::endl << std::flush;
 	startRenderingAllDisplays(renderer, x);
+
+	UniqueMutexLock startedActionLock(threadInfo.startedActionMutex);
+	while (threadInfo.numThreadsStarted < threadInfo.numThreads) {
+		threadInfo.startedActionCond.wait(startedActionLock);
+	}
+	startedActionLock.unlock();
 }
 
 ThreadedDisplayFactory::ThreadedDisplayFactory() {

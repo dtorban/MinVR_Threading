@@ -11,6 +11,7 @@
 
 #include "display/VRDisplayDevice.h"
 #include "RenderThread.h"
+#include "Thread.h"
 
 namespace MinVR {
 
@@ -28,6 +29,8 @@ protected:
 
 private:
 	RenderThread* renderThread;
+	RenderThreadInfo threadInfo;
+	int frame;
 };
 
 class ThreadedDisplayFactory : public SimpleVRDisplayFactory {

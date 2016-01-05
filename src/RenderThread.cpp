@@ -11,7 +11,8 @@
 
 namespace MinVR {
 
-RenderThread::RenderThread(VRDisplayDevice* display) : threadAction(NONE) {
+RenderThread::RenderThread(VRDisplayDevice* display, RenderThreadInfo* threadInfo)
+	: threadInfo(threadInfo), frame(0) {
 	// TODO Auto-generated constructor stub
 	_thread = new Thread(&RenderThread::render, this);
 }
@@ -26,17 +27,49 @@ RenderThread::~RenderThread() {
 }
 
 void RenderThread::render() {
+
 	while (true)
 	{
-		if (threadAction == NONE)
-		{
-			std::cout << "NONE" << std::endl;
+		frame++;
+
+		// Wait for the main thread to signal that it's ok to start rendering
+		UniqueMutexLock startActionLock(threadInfo->startActionMutex);
+		while (threadInfo->threadAction == THREADACTION_NONE) {
+			threadInfo->startActionCond.wait(startActionLock);
 		}
-		else if (threadAction == RENDER)
-		{
-			std::cout << "RENDER" << std::endl;
+		if (threadAction == THREADACTION_TERMINATE) {
+			// RENDERING_TERMINATE is a special flag used to quit the application and cleanup all the threads nicely
+			startActionLock.unlock();
+			return;
 		}
 
+		startActionLock.unlock();
+
+		if (threadInfo->threadAction == THREADACTION_NONE)
+		{
+			std::cout << "NONE" << std::endl << std::flush;
+		}
+		else if (threadInfo->threadAction == THREADACTION_RENDER)
+		{
+			std::cout << "RENDER " << frame << std::endl << std::flush;
+		}
+		else if (threadInfo->threadAction == THREADACTION_ACTION)
+		{
+			std::cout << "ACTION" << std::endl << std::flush;
+		}
+
+		threadInfo->startedActionMutex.lock();
+		threadInfo->numThreadsStarted++;
+		threadInfo->startedActionCond.notify_all();
+		threadInfo->startedActionMutex.unlock();
+
+		threadInfo->threadAction = THREADACTION_NONE;
+		threadInfo->barrier->wait();
+
+		threadInfo->endActionMutex.lock();
+		threadInfo->numThreadsCompleted++;
+		threadInfo->endActionCond.notify_all();
+		threadInfo->endActionMutex.unlock();
 	}
 }
 
